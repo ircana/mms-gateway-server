@@ -1,0 +1,81 @@
+# MMS development stack.
+#
+# Deliberately a second, self-contained gateway: its own database, its own
+# volume, its own port. Nothing here is shared with the live `sms-gateway`
+# stack on 3005, so a broken build or a wiped dev database cannot take SMS
+# down. Promotion to production is a rebuild of that stack from this repo,
+# not a change to anything below.
+#
+# Bound to loopback on purpose. Phase one is tested with curl from the VPS
+# acting as a device; a real handset needs a public path, which is an nginx
+# location added when we get there — not an open port in the meantime.
+name: mms-gateway-dev
+
+services:
+  backend:
+    image: mms-gateway:dev
+    build:
+      context: ../..
+      dockerfile: ./build/package/Dockerfile
+      args:
+        - APP=sms-gateway
+    environment:
+      - DEBUG=
+      - HTTP__LISTEN=0.0.0.0:3000
+      - HTTP__PROXIES=127.0.0.1
+      - GATEWAY__MODE=private
+      - GATEWAY__PRIVATE_TOKEN=${GATEWAY__PRIVATE_TOKEN}
+      - DATABASE__HOST=db
+      - DATABASE__PORT=3306
+      - DATABASE__USER=sms
+      - DATABASE__PASSWORD=${DATABASE__PASSWORD}
+      - DATABASE__DATABASE=sms
+      - DATABASE__TIMEZONE=UTC
+    ports:
+      - "127.0.0.1:3006:3000"
+    restart: "unless-stopped"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  worker:
+    image: mms-gateway:dev
+    command: ["/app/app", "worker"]
+    environment:
+      - DEBUG=
+      - HTTP__LISTEN=0.0.0.0:3000
+      - GATEWAY__MODE=private
+      - GATEWAY__PRIVATE_TOKEN=${GATEWAY__PRIVATE_TOKEN}
+      - DATABASE__HOST=db
+      - DATABASE__PORT=3306
+      - DATABASE__USER=sms
+      - DATABASE__PASSWORD=${DATABASE__PASSWORD}
+      - DATABASE__DATABASE=sms
+      - DATABASE__TIMEZONE=UTC
+    restart: "unless-stopped"
+    depends_on:
+      backend:
+        condition: service_started
+      db:
+        condition: service_healthy
+
+  db:
+    image: mariadb:lts
+    environment:
+      - MYSQL_ROOT_PASSWORD=${DATABASE__ROOT_PASSWORD}
+      - MYSQL_DATABASE=sms
+      - MYSQL_USER=sms
+      - MYSQL_PASSWORD=${DATABASE__PASSWORD}
+      - MARIADB_AUTO_UPGRADE=1
+    volumes:
+      - mms-dev-mariadb-data:/var/lib/mysql
+    restart: "unless-stopped"
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      start_period: 10s
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+volumes:
+  mms-dev-mariadb-data:
