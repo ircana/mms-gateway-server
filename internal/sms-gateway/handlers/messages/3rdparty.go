@@ -109,6 +109,7 @@ func (h *ThirdPartyController) post(userID string, c *fiber.Ctx) error {
 
 	var textContent *messages.TextMessageContent
 	var dataContent *messages.DataMessageContent
+	var mmsContent *messages.MmsMessageContent
 	if text := req.GetTextMessage(); text != nil {
 		textContent = &messages.TextMessageContent{
 			Text: text.Text,
@@ -118,6 +119,12 @@ func (h *ThirdPartyController) post(userID string, c *fiber.Ctx) error {
 			Data: data.Data,
 			Port: data.Port,
 		}
+	} else if mms := req.GetMmsMessage(); mms != nil {
+		mmsContent = &messages.MmsMessageContent{
+			Subject:     mms.Subject,
+			Text:        mms.Text,
+			Attachments: mms.Attachments,
+		}
 	} else {
 		return fiber.NewError(fiber.StatusBadRequest, "No message content provided")
 	}
@@ -126,6 +133,7 @@ func (h *ThirdPartyController) post(userID string, c *fiber.Ctx) error {
 		MessageContent: messages.MessageContent{
 			TextContent: textContent,
 			DataContent: dataContent,
+			MmsContent:  mmsContent,
 		},
 
 		ID: req.ID,

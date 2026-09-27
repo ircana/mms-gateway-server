@@ -9,6 +9,7 @@ func MessageToMobileDTO(m messages.Message) smsgateway.MobileMessage {
 	var message string
 	var textMessage *smsgateway.TextMessage
 	var dataMessage *smsgateway.DataMessage
+	var mmsMessage *smsgateway.MmsMessage
 
 	if m.TextContent != nil {
 		message = m.TextContent.Text
@@ -20,6 +21,14 @@ func MessageToMobileDTO(m messages.Message) smsgateway.MobileMessage {
 			Data: m.DataContent.Data,
 			Port: m.DataContent.Port,
 		}
+	} else if m.MmsContent != nil {
+		// The phone reads the caption from mmsMessage.text; `message` stays
+		// empty so an older client does not send the caption as a bare SMS.
+		mmsMessage = &smsgateway.MmsMessage{
+			Subject:     m.MmsContent.Subject,
+			Text:        m.MmsContent.Text,
+			Attachments: m.MmsContent.Attachments,
+		}
 	}
 
 	return smsgateway.MobileMessage{
@@ -30,7 +39,7 @@ func MessageToMobileDTO(m messages.Message) smsgateway.MobileMessage {
 			Message:     message,
 			TextMessage: textMessage,
 			DataMessage: dataMessage,
-			MmsMessage:  nil,
+			MmsMessage:  mmsMessage,
 
 			SimNumber:          m.SimNumber,
 			WithDeliveryReport: m.WithDeliveryReport,
@@ -58,7 +67,7 @@ func MessageStateToDTO(state messages.MessageState) smsgateway.MessageState {
 
 		TextMessage:   state.TextContent,
 		DataMessage:   state.DataContent,
-		MmsMessage:    nil,
+		MmsMessage:    state.MmsContent,
 		HashedMessage: state.HashedContent,
 	}
 }

@@ -8,11 +8,13 @@ import (
 
 type TextMessageContent = smsgateway.TextMessage
 type DataMessageContent = smsgateway.DataMessage
+type MmsMessageContent = smsgateway.MmsMessage
 type HashedMessageContent = smsgateway.HashedMessage
 
 type MessageContent struct {
 	TextContent *TextMessageContent `json:"textContent,omitempty"`
 	DataContent *DataMessageContent `json:"dataContent,omitempty"`
+	MmsContent  *MmsMessageContent  `json:"mmsContent,omitempty"`
 }
 
 type MessageStateContent struct {
